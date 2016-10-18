@@ -41,25 +41,25 @@ public class ApplicationVerticle extends AbstractVerticle {
         final SockJSHandler ebHandler = SockJSHandler.create(vertx).bridge(options, event -> {
             if (event.type() == BridgeEventType.SOCKET_CREATED) {
                 log.info("A socket was created");
-                subscription = clock.subscribe(ti -> publish("toCLient", "Remote second: " + ti.getValue()));
+                if (subscription == null) {
+                    subscription = clock.subscribe(ti -> {
+                        publish("toClient", "Remote second: " + ti.getValue());
+                    });
+                }
             } else if (event.type() == BridgeEventType.SOCKET_CLOSED) {
-                log.info("A socket was created");
+                log.info("A socket was closed");
                 subscription.unsubscribe();
+                subscription = null;
             }
             event.complete(true);
         });
 
         router.route("/eventbus/*").handler(ebHandler);
 
-        // EventBus & handler
-        // Allow for static routes (css, images, etc)
         router.route().handler(StaticHandler.create());
 
-        // Start server
-        final String webPort = System.getProperty("WEB_PORT");
-        final int port = webPort != null ? Integer.valueOf(webPort) : 8080;
         final HttpServer server = vertx.createHttpServer();
-        server.requestHandler(router::accept).listen(port);
+        server.requestHandler(router::accept).listen(8080);
     }
 
     private void publish(final String destination, final String data) {
